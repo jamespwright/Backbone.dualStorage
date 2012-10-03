@@ -1,9 +1,8 @@
-This project is now dormant, as I no longer work on any project that needs it.
-
-Backbone dualStorage Adapter v1.0
+Backbone dualStorage Adapter v1.0.1
 =================================
 
-A dualStorage adapter for Backbone. It's a drop-in replacement for Backbone.Sync() to handle saving to a localStorage database as a cache for the remote models.
+A dualStorage adapter for Backbone. It's a drop-in replacement for Backbone.Sync() to handle saving to a localStorage database as a cache for the remote models.  
+This versions main difference from the original is that it checks LocalStorage first on all "fetch" calls and updates the user immediately.
 
 Usage
 -----

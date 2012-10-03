@@ -51,21 +51,7 @@
       var that = this;
       this.name = name;
       this.records = this.recordsOn(this.name);
-
-      that.lawnchair = new Lawnchair({ name: this.name }, function(store) {
-          this.before('save', function(record){
-              //console.log("saving " + that.name, record);
-          });
-
-          this.after('save', function(record){
-              //console.log("saved " + that.name, record);
-          });
-      });
     }
-
-    Store.prototype.getData = function(callback) {
-      this.lawnchair.all(callback);
-    };
 
     Store.prototype.generateId = function() {
       return S4() + S4() + '-' + S4() + '-' + S4() + '-' + S4() + '-' + S4() + S4() + S4();
