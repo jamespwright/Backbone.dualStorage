@@ -4,7 +4,7 @@
 
   Backbone.Collection.prototype.syncDirty = function() {
     var id, ids, model, store, _i, _len, _results;
-    store = localStorage.getItem("" + this.url + "_dirty");
+    store = localStorage.getItem("" + this.type + "_dirty");
     ids = (store && store.split(',')) || [];
     _results = [];
     for (_i = 0, _len = ids.length; _i < _len; _i++) {
@@ -19,7 +19,7 @@
 
   Backbone.Collection.prototype.syncDestroyed = function() {
     var id, ids, model, store, _i, _len, _results;
-    store = localStorage.getItem("" + this.url + "_destroyed");
+    store = localStorage.getItem("" + this.type + "_destroyed");
     ids = (store && store.split(',')) || [];
     _results = [];
     for (_i = 0, _len = ids.length; _i < _len; _i++) {
@@ -47,9 +47,25 @@
     Store.prototype.sep = '';
 
     function Store(name) {
+      console.log('creating ' + name);
+      var that = this;
       this.name = name;
       this.records = this.recordsOn(this.name);
+
+      that.lawnchair = new Lawnchair({ name: this.name }, function(store) {
+          this.before('save', function(record){
+              //console.log("saving " + that.name, record);
+          });
+
+          this.after('save', function(record){
+              //console.log("saved " + that.name, record);
+          });
+      });
     }
+
+    Store.prototype.getData = function(callback) {
+      this.lawnchair.all(callback);
+    };
 
     Store.prototype.generateId = function() {
       return S4() + S4() + '-' + S4() + '-' + S4() + '-' + S4() + '-' + S4() + S4() + S4();
@@ -142,7 +158,7 @@
 
     Store.prototype.findAll = function() {
       var id, _i, _len, _ref, _results;
-      console.log('findAlling');
+      console.log('finding All');
       _ref = this.records;
       _results = [];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
@@ -242,9 +258,9 @@
   onlineSync = Backbone.sync;
 
   dualsync = function(method, model, options) {
-    var error, local, originalModel, success;
+    var error, local, originalModel, remoteOptions, success;
     console.log('dualsync', method, model, options);
-    options.storeName = result(model.collection, 'url') || result(model, 'url');
+    options.storeName = result(model.collection, 'type') || result(model, 'type');
     if (result(model, 'remote') || result(model.collection, 'remote')) {
       return onlineSync(method, model, options);
     }
@@ -262,9 +278,13 @@
           console.log("can't clear", options.storeName, "require sync dirty data first");
           return success(localsync(method, model, options));
         } else {
-          options.success = function(resp, status, xhr) {
+          remoteOptions = _(options).clone();
+          remoteOptions.success = function(resp, status, xhr) {
             var i, _i, _len;
             console.log('got remote', resp, 'putting into', options.storeName);
+
+            resp = (resp.Data) ? resp.Data : resp; // Handle JSONP requests
+
             resp = parseRemoteResponse(model, resp);
             if (!options.add) {
               localsync('clear', model, options);
@@ -280,11 +300,18 @@
             }
             return success(resp, status, xhr);
           };
-          options.error = function(resp) {
-            console.log('getting local from', options.storeName);
-            return success(localsync(method, model, options));
+          remoteOptions.error = function(resp) {
+            return console.log('remote sync failed, doing nothing');
           };
-          return onlineSync(method, model, options);
+          options.ignoreCallbacks = false;
+          options.success = function(resp) {
+            success(resp);
+            if (_.isUndefined(model.shouldRemoteSync) || (_.isFunction(model.shouldRemoteSync) && model.shouldRemoteSync())) {
+              return onlineSync(method, model, remoteOptions);
+            }
+          };
+          console.log('getting local from', options.storeName);
+          return localsync(method, model, options);
         }
         break;
       case 'create':
